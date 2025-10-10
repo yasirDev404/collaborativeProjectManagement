@@ -11,17 +11,23 @@ const userSchema = new mongoose.Schema({
   otp: String,
   otpExpire: Date,
   isEmailVerified: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }, 
+  createdAt: { type: Date, default: Date.now },
+  expireAt: { type: Date, default: null },
 });
 
-// 🟢 Only delete *unverified* users after 30 minutes 
-userSchema.index(
-  { createdAt: 1 },
-  {
-    expireAfterSeconds: 1800, // 30 minutes
-    partialFilterExpression: { isEmailVerified: false },
+userSchema.index({ expireAt: 1 }, { expireAfterSeconds: 0 });
+
+userSchema.pre("save", function (next) {
+  if (!this.isEmailVerified && !this.expireAt) {
+    this.expireAt = new Date(Date.now() + 30 * 60 * 1000);
   }
-);
+  
+  if (this.isEmailVerified && this.expireAt) {
+    this.expireAt = null;
+  }
+  
+  next();
+});
 
 const User = mongoose.model("User", userSchema);
 

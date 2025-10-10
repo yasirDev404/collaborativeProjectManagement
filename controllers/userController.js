@@ -274,10 +274,130 @@ const updateUserProfile = async (req, res) => {
     await user.save();
 
     return successHelper(res, user, "Profile updated successfully", 200);
-
   } catch (e) {
     console.log("Error:", e);
     return errorHelper(res, e, "Error updating profile", 500);
+  }
+};
+
+const getUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user).select(
+      "-password -otp -otpExpire"
+    );
+    if (!user) {
+      return errorHelper(res, null, "User not found", 404);
+    }
+    return successHelper(res, user, "User profile fetched successfully", 200);
+  } catch (e) {
+    console.log("Error:", e);
+    return errorHelper(res, e, "Error fetching user profile", 500);
+  }
+};
+
+const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (req.user._id.toString() !== id) {
+    }
+    const user = await User.findById(id).select("-password -otp -otpExpire");
+    if (!user) {
+      return errorHelper(res, null, "User not found", 404);
+    }
+    return successHelper(res, user, "User fetched successfully", 200);
+  } catch (e) {
+    console.log("Error:", e);
+    return errorHelper(res, e, "Error fetching user", 500);
+  }
+};
+
+const getAllUsers = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = "" } = req.query;
+    const query = search
+      ? {
+          $or: [
+            { name: { $regex: search, $options: "i" } },
+            { email: { $regex: search, $options: "i" } },
+          ],
+        }
+      : {};
+    const users = await User.find(query)
+      .select("-password -otp -otpExpire")
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .sort({ createdAt: -1 });
+    const count = await User.countDocuments(query);
+    return successHelper(
+      res,
+      {
+        users,
+        totalPages: Math.ceil(count / limit),
+        currentPage: page,
+        totalUsers: count,
+      },
+      "Users fetched successfully",
+      200
+    );
+  } catch (e) {
+    console.log("Error:", e);
+    return errorHelper(res, e, "Error fetching users", 500);
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (req.user._id.toString() !== id) {
+    }
+    const user = await User.findById(id);
+    if (!user) {
+      return errorHelper(res, null, "User not found", 404);
+    }
+    await User.findByIdAndDelete(id);
+    return successHelper(res, null, "User deleted successfully", 200);
+  } catch (e) {
+    console.log("Error:", e);
+    return errorHelper(res, e, "Error deleting user", 500);
+  }
+};
+
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return errorHelper(
+        res,
+        null,
+        "Current password and new password are required",
+        400
+      );
+    }
+    if (newPassword.length < 6) {
+      return errorHelper(
+        res,
+        null,
+        "New password must be at least 6 characters",
+        400
+      );
+    }
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return errorHelper(res, null, "User not found", 404);
+    }
+    const isPasswordValid = await comparePassword(
+      currentPassword,
+      user.password
+    );
+    if (!isPasswordValid) {
+      return errorHelper(res, null, "Current password is incorrect", 401);
+    }
+    user.password = await hashPassword(newPassword);
+    await user.save();
+    return successHelper(res, null, "Password changed successfully", 200);
+  } catch (e) {
+    console.log("Error:", e);
+    return errorHelper(res, e, "Error changing password", 500);
   }
 };
 
@@ -286,5 +406,10 @@ export {
   resendOtp,
   verifyEmailOtp,
   loginUser,
+  getUserProfile,
+  getUserById,
+  getAllUsers,
   updateUserProfile,
+  deleteUser,
+  changePassword,
 };

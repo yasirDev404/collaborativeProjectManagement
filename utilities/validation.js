@@ -36,3 +36,8 @@ export const updateUserProfileSchema = Joi.object({
   city: Joi.string(),
   postalCode: Joi.string(),
 });
+
+export const changePasswordSchema = Joi.object({
+  currentPassword: Joi.string().min(6).required(),
+  newPassword: Joi.string().min(6).required(),
+});
