@@ -25,7 +25,7 @@ const errorHelper = (res, error, message, status = 400) => {
 
 const generateToken = (user) => {
   return jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: "1d",
+    expiresIn: "45d",
   });
 };
 
@@ -36,7 +36,7 @@ const signToken = (data) => {
 };
 
 const generateOtp = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+ return Math.floor(1000 + Math.random() * 9000).toString();
 };
 
 const hashOtp = (otp) => {

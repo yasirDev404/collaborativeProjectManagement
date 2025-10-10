@@ -7,6 +7,7 @@ import {
   generateOtp,
   hashOtp,
   hashPassword,
+  signToken,
 } from "../utilities/helpers.js";
 import sendEmail from "../utilities/email.js";
 
@@ -38,7 +39,7 @@ const registerUser = async (req, res) => {
       console.error("Error sending email:", err);
     });
 
-    await User.create({
+   const newUser = await User.create({
       email,
       name,
       city,
@@ -51,10 +52,12 @@ const registerUser = async (req, res) => {
       isEmailVerified: false,
     });
 
+   const token = signToken({ id: newUser._id, email });
+
     return successHelper(
       res,
-      null,
-      "User created Successfully, Please verify your email to login",
+      token,
+      "User created Successfully,An email has been sent to your email to verify your account, please enter the OTP to continue using CPM!",
       201
     );
   } catch (e) {
@@ -63,4 +66,85 @@ const registerUser = async (req, res) => {
   }
 };
 
-export { registerUser };
+const resendOtp = async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return errorHelper(res, null, "Email is required", 400);
+  }
+  try {
+    const existingUser = await User.findOne({ email });
+    if (!existingUser) {
+      return errorHelper(res, null, "User does not exist", 400);
+    }
+    const otp = generateOtp();
+    const hashedOtp = hashOtp(otp);
+
+    sendEmail(
+      email,
+      "Welcome to Dexa Doors - CPM, Verify Your Email",
+      `Your OTP is ${otp}. It is valid for 10 minutes.`
+    ).catch((err) => {
+      console.error("Error sending email:", err);
+    });
+
+    await User.findOneAndUpdate(
+      { email },
+      { otp: hashedOtp, otpExpire: Date.now() + 10 * 60 * 1000 }
+    );
+    const token = signToken({ id: existingUser._id, email });
+    return successHelper(
+      res,
+      token,
+      "OTP resent Successfully, Please verify your email to login",
+      200
+    );
+  } catch (e) {
+    console.log("Error:", e);
+    return errorHelper(res, e, "Error resending OTP", 500);
+  }
+};
+
+const verifyEmailOtp = async (req, res) => {
+  const { otp } = req.body;
+  const id = req.user._id;
+  
+  if (!otp) {
+    return errorHelper(res, null, "OTP is required", 400);
+  }
+  
+  try {
+    const existingUser = await User.findById(id);
+    if (!existingUser) {
+      return errorHelper(res, null, "User not found", 404);
+    }
+    
+    // Debug logs
+    console.log("Incoming OTP:", otp);
+    console.log("OTP Type:", typeof otp);
+    console.log("Stored OTP:", existingUser.otp);
+    console.log("OTP Expiry:", new Date(existingUser.otpExpire));
+    console.log("Current Time:", new Date(Date.now()));
+    console.log("Is Expired?", existingUser.otpExpire < Date.now());
+    
+    const hashedOtp = hashOtp(otp);
+    console.log("Hashed incoming OTP:", hashedOtp);
+    console.log("OTPs match?", existingUser.otp === hashedOtp);
+    
+    if (existingUser.otp !== hashedOtp || existingUser.otpExpire < Date.now()) {
+      return errorHelper(res, null, "Invalid or expired OTP", 400);
+    }
+
+    existingUser.isEmailVerified = true;
+    existingUser.otp = undefined;
+    existingUser.otpExpire = undefined;
+    await existingUser.save();
+
+    const token = generateToken(existingUser);
+    return successHelper(res, { token }, "Email verified successfully", 200);
+  } catch (e) {
+    console.log("Error:", e);
+    return errorHelper(res, e, "Error verifying OTP", 500);
+  }
+};
+
+export { registerUser, resendOtp, verifyEmailOtp };
