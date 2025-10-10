@@ -14,3 +14,25 @@ export const userValidationSchema = Joi.object({
   city: Joi.string(),
   postalCode: Joi.string(),
 });
+
+export const loginValidationSchema = Joi.object({
+  email: Joi.string().email().required(),
+  password: Joi.string().min(6).required(),
+});
+
+export const resendOtpSchema = Joi.object({
+  email: Joi.string().email().required(),
+});
+
+export const verifyOtpSchema = Joi.object({
+  otp: Joi.alternatives().try(Joi.string().trim(), Joi.number()).required(),
+});
+
+export const updateUserProfileSchema = Joi.object({
+  name: Joi.string().required(),
+  avatar: Joi.string(),
+  country: Joi.string(),
+  state: Joi.string(),
+  city: Joi.string(),
+  postalCode: Joi.string(),
+});

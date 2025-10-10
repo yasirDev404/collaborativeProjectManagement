@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }, 
 });
 
-// 🟢 Only delete *unverified* users after 30 minutes
+// 🟢 Only delete *unverified* users after 30 minutes 
 userSchema.index(
   { createdAt: 1 },
   {
