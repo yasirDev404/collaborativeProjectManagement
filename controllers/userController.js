@@ -41,7 +41,7 @@ const registerUser = async (req, res) => {
     const hashedOtp = hashOtp(otp);
     const hashedPassword = await hashPassword(password);
 
-    sendEmail(
+    sendEmail(  
       email,
       "Welcome to Dexa Doors - CPM, Verify Your Email",
       `Your OTP is ${otp}. It is valid for 10 minutes.`
@@ -49,6 +49,8 @@ const registerUser = async (req, res) => {
       console.error("Error sending email:", err);
     });
 
+    // * expireAt will be automatically set by the pre-save hook in the User model
+    // * New unverified users will expire after 30 minutes
     const newUser = await User.create({
       email,
       name,
@@ -69,6 +71,8 @@ const registerUser = async (req, res) => {
       email: newUser.email,
       hasOtp: !!newUser.otp,
       otpExpire: newUser.otpExpire,
+      // * Log expireAt to verify TTL is working
+      expireAt: newUser.expireAt,
     });
 
     const token = signToken({ id: newUser._id, email });
@@ -116,11 +120,13 @@ const resendOtp = async (req, res) => {
       console.error("Error sending email:", err);
     });
 
+    // * Reset the expireAt timer when resending OTP (another 30 minutes)
     const updatedUser = await User.findByIdAndUpdate(
       existingUser._id,
       {
         otp: hashedOtp,
         otpExpire: Date.now() + 10 * 60 * 1000,
+        expireAt: new Date(Date.now() + 30 * 60 * 1000), // * Give user another 30 minutes to verify
       },
       { new: true }
     );
@@ -129,6 +135,8 @@ const resendOtp = async (req, res) => {
       id: updatedUser._id,
       hasOtp: !!updatedUser.otp,
       otpExpire: updatedUser.otpExpire,
+      // * Log expireAt to verify TTL reset
+      expireAt: updatedUser.expireAt,
     });
 
     const token = signToken({ id: existingUser._id, email });
@@ -197,6 +205,7 @@ const verifyEmailOtp = async (req, res) => {
       return errorHelper(res, null, "Invalid OTP", 400);
     }
 
+    // * Mark email as verified and clean up OTP fields
     existingUser.isEmailVerified = true;
     existingUser.otp = undefined;
     existingUser.otpExpire = undefined;
@@ -302,10 +311,7 @@ const getUserById = async (req, res) => {
     const { id } = req.params;
     
     if (req.user._id.toString() !== id) {
-      // If you have admin role, check it here:
-      // if (req.user.role !== 'admin') {
-      //   return errorHelper(res, null, "Unauthorized access", 403);
-      // }
+      return errorHelper(res, null, "Unauthorized", 403);
     }
 
     const user = await User.findById(id).select("-password -otp -otpExpire");
@@ -372,10 +378,7 @@ const deleteUser = async (req, res) => {
 
     // Allow users to delete their own account or implement admin check
     if (req.user._id.toString() !== id) {
-      // If you have admin role, check it here:
-      // if (req.user.role !== 'admin') {
-      //   return errorHelper(res, null, "Unauthorized access", 403);
-      // }
+      return errorHelper(res, null, "Unauthorized", 403);
     }
 
     const user = await User.findById(id);
