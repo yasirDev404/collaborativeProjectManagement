@@ -17,7 +17,7 @@ const sendEmail = async (to, subject, text) => {
     });
 
     const info = await transporter.sendMail({
-      from: `"DexaDoors"<${process.env.SMTP_USER}>`,
+      from: `"Dexa Doors"<${process.env.SMTP_USER}>`,
       to,
       subject,
       text,

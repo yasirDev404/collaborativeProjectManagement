@@ -18,6 +18,7 @@ import {
 } from "../utilities/helpers.js";
 import sendEmail from "../utilities/email.js";
 
+
 const registerUser = async (req, res) => {
   const { error } = userValidationSchema.validate(req.body, {
     allowUnknown: false,
@@ -59,6 +60,8 @@ const registerUser = async (req, res) => {
       otp: hashedOtp,
       otpExpire: Date.now() + 10 * 60 * 1000,
       isEmailVerified: false,
+      expireAt: new Date(Date.now() + 30 * 60 * 1000),
+      role: "user",
     });
 
     console.log("Created user with OTP:", {
@@ -73,7 +76,7 @@ const registerUser = async (req, res) => {
     return successHelper(
       res,
       { token },
-      "User created Successfully,An email has been sent to your email to verify your account, please enter the OTP to continue using CPM!",
+      "User created Successfully, An email has been sent to your email to verify your account, please enter the OTP to continue using CPM!",
       201
     );
   } catch (e) {
@@ -197,6 +200,7 @@ const verifyEmailOtp = async (req, res) => {
     existingUser.isEmailVerified = true;
     existingUser.otp = undefined;
     existingUser.otpExpire = undefined;
+    existingUser.expireAt = undefined;
     await existingUser.save();
 
     const token = generateToken(existingUser);
@@ -258,12 +262,9 @@ const updateUserProfile = async (req, res) => {
     return errorHelper(res, error.details[0].message, "Validation Error", 400);
   }
   const { name, avatar, country, state, city, postalCode } = req.body;
-  const userId = req.user;
+  
   try {
-    const user = await User.findById(userId);
-    if (!user) {
-      return errorHelper(res, null, "User not found", 404);
-    }
+    const user = req.user;
 
     user.name = name || user.name;
     user.avatar = avatar || user.avatar;
@@ -280,14 +281,15 @@ const updateUserProfile = async (req, res) => {
   }
 };
 
+
 const getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user).select(
-      "-password -otp -otpExpire"
-    );
+    const user = await User.findById(req.user._id).select("-password -otp -otpExpire");
+    
     if (!user) {
       return errorHelper(res, null, "User not found", 404);
     }
+
     return successHelper(res, user, "User profile fetched successfully", 200);
   } catch (e) {
     console.log("Error:", e);
@@ -298,12 +300,20 @@ const getUserProfile = async (req, res) => {
 const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
+    
     if (req.user._id.toString() !== id) {
+      // If you have admin role, check it here:
+      // if (req.user.role !== 'admin') {
+      //   return errorHelper(res, null, "Unauthorized access", 403);
+      // }
     }
+
     const user = await User.findById(id).select("-password -otp -otpExpire");
+    
     if (!user) {
       return errorHelper(res, null, "User not found", 404);
     }
+
     return successHelper(res, user, "User fetched successfully", 200);
   } catch (e) {
     console.log("Error:", e);
@@ -311,9 +321,16 @@ const getUserById = async (req, res) => {
   }
 };
 
+// READ - Get All Users (Admin Only - Add role check as needed)
 const getAllUsers = async (req, res) => {
   try {
+    // Uncomment if you implement role-based access
+    // if (req.user.role !== 'admin') {
+    //   return errorHelper(res, null, "Unauthorized: Admin access required", 403);
+    // }
+
     const { page = 1, limit = 10, search = "" } = req.query;
+    
     const query = search
       ? {
           $or: [
@@ -322,12 +339,15 @@ const getAllUsers = async (req, res) => {
           ],
         }
       : {};
+
     const users = await User.find(query)
       .select("-password -otp -otpExpire")
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .sort({ createdAt: -1 });
+
     const count = await User.countDocuments(query);
+
     return successHelper(
       res,
       {
@@ -345,16 +365,27 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// DELETE - Delete User Account (Self or Admin)
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Allow users to delete their own account or implement admin check
     if (req.user._id.toString() !== id) {
+      // If you have admin role, check it here:
+      // if (req.user.role !== 'admin') {
+      //   return errorHelper(res, null, "Unauthorized access", 403);
+      // }
     }
+
     const user = await User.findById(id);
+    
     if (!user) {
       return errorHelper(res, null, "User not found", 404);
     }
+
     await User.findByIdAndDelete(id);
+
     return successHelper(res, null, "User deleted successfully", 200);
   } catch (e) {
     console.log("Error:", e);
@@ -365,35 +396,30 @@ const deleteUser = async (req, res) => {
 const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
+
     if (!currentPassword || !newPassword) {
-      return errorHelper(
-        res,
-        null,
-        "Current password and new password are required",
-        400
-      );
+      return errorHelper(res, null, "Current password and new password are required", 400);
     }
+
     if (newPassword.length < 6) {
-      return errorHelper(
-        res,
-        null,
-        "New password must be at least 6 characters",
-        400
-      );
+      return errorHelper(res, null, "New password must be at least 6 characters", 400);
     }
+
     const user = await User.findById(req.user._id);
+    
     if (!user) {
       return errorHelper(res, null, "User not found", 404);
     }
-    const isPasswordValid = await comparePassword(
-      currentPassword,
-      user.password
-    );
+
+    const isPasswordValid = await comparePassword(currentPassword, user.password);
+    
     if (!isPasswordValid) {
       return errorHelper(res, null, "Current password is incorrect", 401);
     }
+
     user.password = await hashPassword(newPassword);
     await user.save();
+
     return successHelper(res, null, "Password changed successfully", 200);
   } catch (e) {
     console.log("Error:", e);
@@ -406,6 +432,7 @@ export {
   resendOtp,
   verifyEmailOtp,
   loginUser,
+  
   getUserProfile,
   getUserById,
   getAllUsers,
