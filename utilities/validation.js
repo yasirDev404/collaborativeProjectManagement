@@ -64,3 +64,23 @@ export const inviteMemberSchema = Joi.object({
 export const updateMemberRoleSchema = Joi.object({
   role: Joi.string().valid('owner', 'admin', 'member', 'viewer').required()
 });
+
+export const projectValidationSchema = Joi.object({
+  name: Joi.string().min(3).max(200).required(),
+  description: Joi.string().allow('').optional(),
+  color: Joi.string().pattern(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional(),
+  icon: Joi.string().max(10).optional(),
+  members: Joi.array().items(Joi.string().pattern(/^[0-9a-fA-F]{24}$/)).optional()
+});
+
+export const updateProjectSchema = Joi.object({
+  name: Joi.string().min(3).max(200),
+  description: Joi.string().allow(''),
+  color: Joi.string().pattern(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/),
+  icon: Joi.string().max(10),
+  members: Joi.array().items(Joi.string().pattern(/^[0-9a-fA-F]{24}$/))
+}).min(1);
+
+export const confirmDeleteSchema = Joi.object({
+  confirmDelete: Joi.boolean().valid(true).required()
+});

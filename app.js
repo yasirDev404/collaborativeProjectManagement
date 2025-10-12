@@ -1,6 +1,7 @@
 import express from "express";
 import userRoutes from "./routes/userRoutes.js";
 import workspaceRoutes from "./routes/workspaceRoutes.js";
+import projectRoutes from "./routes/projectRoutes.js"
 
 
 const app = express();
@@ -27,5 +28,6 @@ app.use((req, res, next) => {
 
 app.use("/api/user", userRoutes);
 app.use("/api/workspace", workspaceRoutes);
+app.use("/api/project", projectRoutes);
 
 export default app;
