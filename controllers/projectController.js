@@ -356,9 +356,9 @@ const restoreProject = async (req, res) => {
       return errorHelper(res, null, "Invalid project ID", 400);
     }
 
-    const project = await Project.findOne({
-      _id: projectId,
+    const project = await Project.find({
       workspaceId: req.workspace._id,
+      isArchived: true,
       deletedAt: null,
     });
 
@@ -395,7 +395,13 @@ const restoreProject = async (req, res) => {
 
 const getArchivedProjects = async (req, res) => {
   try {
-    if (!checkWorkspaceRole(req.workspace, req.user._id, ["owner", "admin", "member"])) {
+    if (
+      !checkWorkspaceRole(req.workspace, req.user._id, [
+        "owner",
+        "admin",
+        "member",
+      ])
+    ) {
       return errorHelper(res, null, "Insufficient permissions", 403);
     }
     const { projectId } = req.params;
@@ -409,9 +415,9 @@ const getArchivedProjects = async (req, res) => {
       .populate("createdBy", "name email avatar")
       .populate("members", "name email avatar");
 
-      if(!archivedProjects){
-        return errorHelper(res, null, "No archived projects found", 404);
-      }
+    if (!archivedProjects) {
+      return errorHelper(res, null, "No archived projects found", 404);
+    }
 
     return successHelper(
       res,
@@ -419,7 +425,6 @@ const getArchivedProjects = async (req, res) => {
       "Archived projects fetched successfully",
       200
     );
-
   } catch (e) {
     console.error("Error fetching archived projects:", e);
     return errorHelper(res, e, "Error fetching archived projects", 500);
