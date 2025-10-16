@@ -28,6 +28,12 @@ export const verifyOtpSchema = Joi.object({
   otp: Joi.alternatives().try(Joi.string().trim(), Joi.number()).required(),
 });
 
+
+export const changePasswordSchema = Joi.object({
+  currentPassword: Joi.string().min(6).required(),
+  newPassword: Joi.string().min(6).required(),
+});
+
 export const updateUserProfileSchema = Joi.object({
   name: Joi.string().required(),
   avatar: Joi.string(),
@@ -36,12 +42,6 @@ export const updateUserProfileSchema = Joi.object({
   city: Joi.string(),
   postalCode: Joi.string(),
 });
-
-export const changePasswordSchema = Joi.object({
-  currentPassword: Joi.string().min(6).required(),
-  newPassword: Joi.string().min(6).required(),
-});
-
 export const workspaceValidationSchema = Joi.object({
   name: Joi.string().min(3).max(100).required(),
   description: Joi.string().allow('').optional()

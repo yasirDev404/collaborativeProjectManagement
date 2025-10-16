@@ -431,7 +431,6 @@ const getArchivedProjects = async (req, res) => {
   }
 };
 
-// DELETE PROJECT (Soft Delete)
 const deleteProject = async (req, res) => {
   const { error } = confirmDeleteSchema.validate(req.body);
 
