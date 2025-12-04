@@ -84,3 +84,35 @@ export const updateProjectSchema = Joi.object({
 export const confirmDeleteSchema = Joi.object({
   confirmDelete: Joi.boolean().valid(true).required()
 });
+
+export const taskValidationSchema = Joi.object({
+  title: Joi.string().min(3).max(200).required(),
+  description: Joi.string().allow('').optional(),
+  assignedTo: Joi.array().items(Joi.string().pattern(/^[0-9a-fA-F]{24}$/)).optional(),
+  priority: Joi.string().valid('low', 'medium', 'high', 'urgent').optional(),
+  dueDate: Joi.date().iso().optional(),
+  labels: Joi.array().items(Joi.string().trim()).optional(),
+  estimatedHours: Joi.number().min(0).optional()
+});
+
+export const updateTaskSchema = Joi.object({
+  title: Joi.string().min(3).max(200),
+  description: Joi.string().allow(''),
+  assignedTo: Joi.array().items(Joi.string().pattern(/^[0-9a-fA-F]{24}$/)),
+  status: Joi.string().valid('todo', 'in_progress', 'in_review', 'done'),
+  priority: Joi.string().valid('low', 'medium', 'high', 'urgent'),
+  dueDate: Joi.date().iso().allow(null),
+  labels: Joi.array().items(Joi.string().trim()),
+  estimatedHours: Joi.number().min(0),
+  actualHours: Joi.number().min(0),
+  position: Joi.number().integer().min(0)
+}).min(1);
+
+export const checklistItemSchema = Joi.object({
+  text: Joi.string().required(),
+  isCompleted: Joi.boolean().optional()
+});
+
+export const updateChecklistSchema = Joi.object({
+  checklist: Joi.array().items(checklistItemSchema).required()
+});
