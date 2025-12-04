@@ -306,26 +306,7 @@ const getUserProfile = async (req, res) => {
   }
 };
 
-const getUserById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    if (req.user._id.toString() !== id) {
-      return errorHelper(res, null, "Unauthorized", 403);
-    }
 
-    const user = await User.findById(id).select("-password -otp -otpExpire");
-    
-    if (!user) {
-      return errorHelper(res, null, "User not found", 404);
-    }
-
-    return successHelper(res, user, "User fetched successfully", 200);
-  } catch (e) {
-    console.log("Error:", e);
-    return errorHelper(res, e, "Error fetching user", 500);
-  }
-};
 
 // READ - Get All Users (Admin Only - Add role check as needed)
 const getAllUsers = async (req, res) => {
@@ -370,6 +351,26 @@ const getAllUsers = async (req, res) => {
     return errorHelper(res, e, "Error fetching users", 500);
   }
 };
+
+const getUserById = async(req,res)=> {
+  const id = req.params;
+  if(!id){
+    return errorHelper(res,null,"Id is required to find a User");
+  }
+  try{
+     const user = await User.findById(id);
+     if(!user){
+      console.log(user, "USERUSERUSERUSER");
+      return errorHelper(res,null,"User not found", 404);
+     }
+     if(user){
+      return successHelper(res, user, "User fetched successfully", 200);
+     }
+  }catch(e){
+    console.log(e, "ERROR SERVER INTERNAL ERROR");
+    return errorHelper(res, e, "Error fetching user by ID", 500);
+  }
+}
 
 // DELETE - Delete User Account (Self or Admin)
 const deleteUser = async (req, res) => {
